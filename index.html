@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GST Study Planner v2 Pro</title>
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color:#333;
+  margin:0;
+  padding:0;
+}
+h1 {text-align:center;color:white;margin-top:10px}
+.container {max-width:1000px;margin:auto;padding:10px}
+.section {
+  background:white;
+  padding:15px;
+  margin-bottom:20px;
+  border-radius:12px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+input,button,select {padding:8px;margin:5px;border-radius:6px;border:1px solid #ccc}
+button {background:#667eea;color:white;border:none;cursor:pointer}
+li {
+  list-style:none;
+  background:#eef;
+  margin:5px 0;
+  padding:8px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-radius:6px;
+}
+.progress {height:8px;background:#ddd;border-radius:5px;margin-top:5px}
+.progress-bar {height:8px;background:#667eea;border-radius:5px}
+.countdown {text-align:center;font-size:22px;color:white;margin-bottom:20px}
+.calendar-day {padding:5px;border-bottom:1px solid #ddd}
+.dark-mode {background:#1a1a1a;color:white}
+.dark-mode .section {background:#2a2a2a;color:white}
+.dark-mode button {background:#9b59b6;color:white}
+</style>
+</head>
+<body><h1>?? GST Study Planner v2 Pro</h1>
+<div class="countdown" id="countdown"></div>
+<div style="text-align:center;margin-bottom:10px;"><button onclick="toggleDarkMode()">Toggle Dark Mode</button></div><div class="container"><div class="section">
+<h2>?? Exam Routine</h2>
+<div id="routine"></div>
+</div><div class="section">
+<h2>?? Daily Planner</h2>
+<input type="text" id="dailyInput" placeholder="Today's plan">
+<button onclick="addDaily()">Add</button>
+<ul id="dailyList"></ul>
+</div><div class="section">
+<h2>?? Subjects & Chapters</h2>
+<input type="text" id="subjectInput" placeholder="Subject name">
+<button onclick="addSubject()">Add Subject</button>
+<div id="subjects"></div>
+</div></div><script>
+let subjects = JSON.parse(localStorage.getItem('subjects')) || {};
+let daily = JSON.parse(localStorage.getItem('daily')) || [];
+let darkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
+
+const routineData = [
+  "30 March: Zoology + Botany",
+  "31 March: Math 1st Paper",
+  "1 April: Math 1st + 2nd Paper",
+  "4-9 April: Model Test"
+];
+
+function save(){
+  localStorage.setItem('subjects', JSON.stringify(subjects));
+  localStorage.setItem('daily', JSON.stringify(daily));
+  localStorage.setItem('darkMode', JSON.stringify(darkMode));
+}
+
+function toggleDarkMode(){
+  darkMode = !darkMode;
+  document.body.classList.toggle('dark-mode', darkMode);
+  save();
+}
+if(darkMode) document.body.classList.add('dark-mode');
+
+// Countdown
+function updateCountdown(){
+  let examDate = new Date("April 10, 2026 00:00:00");
+  let now = new Date();
+  let diff = examDate - now;
+  let days = Math.floor(diff/(1000*60*60*24));
+  document.getElementById("countdown").innerText = ? ${days} days left until GST Exam;
+}
+setInterval(updateCountdown,1000);
+updateCountdown();
+
+function renderRoutine(){
+  document.getElementById("routine").innerHTML = routineData.map(r=><div class='calendar-day'>${r}</div>).join('');
+}
+
+function addDaily(){
+  let val = document.getElementById("dailyInput").value;
+  if(!val) return;
+  daily.push(val);
+  save(); render();
+}
+
+function addSubject(){
+  let name = document.getElementById("subjectInput").value;
+  if(!name) return;
+  subjects[name]=[];
+  save(); render();
+}
+
+function addChapter(subject){
+  let c = prompt("Chapter name:");
+  if(!c) return;
+  subjects[subject].push({name:c,tasks:[]});
+  save(); render();
+}
+
+function addTask(subject,i){
+  let t = prompt("Topic:");
+  if(!t) return;
+  subjects[subject][i].tasks.push({name:t,done:false});
+  save(); render();
+}
+
+function toggleTask(s,c,t){
+  subjects[s][c].tasks[t].done=!subjects[s][c].tasks[t].done;
+  save(); render();
+}
+
+function deleteTask(s,c,t){
+  subjects[s][c].tasks.splice(t,1);
+  save(); render();
+}
+function deleteChapter(s,c){
+  subjects[s].splice(c,1);
+  save(); render();
+}
+
+function deleteSubject(s){
+  if(confirm(Delete subject ${s}?)){
+    delete subjects[s]; save(); render();
+  }
+}
+
+function editTask(s,c,t){
+  let newName = prompt("Edit topic:", subjects[s][c].tasks[t].name);
+  if(!newName) return;
+  subjects[s][c].tasks[t].name=newName;
+  save(); render();
+}
+
+function progress(tasks){
+  if(tasks.length==0) return 0;
+  let d = tasks.filter(x=>x.done).length;
+  return Math.round((d/tasks.length)*100);
+}
+
+function render(){
+  renderRoutine();
+  document.getElementById("dailyList").innerHTML = daily.map(d=><li>${d}</li>).join('');
+
+  let container = document.getElementById("subjects");
+  container.innerHTML="";
+  for(let s in subjects){
+    let div=document.createElement("div");
+    div.className="section";
+    div.innerHTML=<h3>${s} <button onclick="deleteSubject('${s}')">Delete Subject</button></h3><button onclick="addChapter('${s}')">Add Chapter</button>;
+
+    subjects[s].forEach((ch,i)=>{
+      let p=progress(ch.tasks);
+      let cDiv=document.createElement("div");
+      cDiv.innerHTML=
+        <h4>${ch.name} (${p}%) <button onclick="deleteChapter('${s}',${i})">Delete Chapter</button></h4>
+        <div class='progress'><div class='progress-bar' style='width:${p}%'></div></div>
+        <button onclick="addTask('${s}',${i})">Add Topic</button>
+        <ul>
+        ${ch.tasks.map((t,ti)=>
+          <li>
+          <span onclick="toggleTask('${s}',${i},${ti})" style="cursor:pointer;text-decoration:${t.done?'line-through':'none'}">
+          ${t.done?'?':'?'} ${t.name}
+          </span>
+          <button onclick="editTask('${s}',${i},${ti})">??</button>
+          <button onclick="deleteTask('${s}',${i},${ti})">?</button>
+          </li>
+        ).join('')}
+        </ul>;
+      div.appendChild(cDiv);
+    });
+    container.appendChild(div);
+  }
+}
+
+render();
+</script></body>
+</html>
